@@ -21,6 +21,7 @@ import net.mamoe.mirai.internal.network.Packet
 import net.mamoe.mirai.internal.network.QQAndroidClient
 import net.mamoe.mirai.internal.network.components.MessageSvcSyncer
 import net.mamoe.mirai.internal.network.handler.logger
+import net.mamoe.mirai.internal.network.notice.GroupMessageProcessor.SendGroupMessageReceipt
 import net.mamoe.mirai.internal.network.protocol.data.proto.MsgComm
 import net.mamoe.mirai.internal.network.protocol.packet.OutgoingPacket
 import net.mamoe.mirai.internal.network.protocol.packet.chat.FileManagement
@@ -389,9 +390,8 @@ internal class GroupSendMessageHandler(
         fromAppId: Int
     ): OnlineMessageSource.Outgoing {
 
-        val receipt: OnlinePushPbPushGroupMsg.SendGroupMessageReceipt =
-            nextEventOrNull(3000) { it.fromAppId == fromAppId }
-                ?: OnlinePushPbPushGroupMsg.SendGroupMessageReceipt.EMPTY
+        val receipt: SendGroupMessageReceipt =
+            nextEventOrNull(3000) { it.fromAppId == fromAppId } ?: SendGroupMessageReceipt.EMPTY
 
         return OnlineMessageSourceToGroupImpl(
             contact,
@@ -440,7 +440,7 @@ internal class GroupSendMessageHandler(
                     groupCode = id,
                     md5 = image.md5,
                     size = if (image is OnlineFriendImageImpl) image.delegate.fileLen else 0
-                ).sendAndExpect<ImgStore.GroupPicUp.Response>()
+                ).sendAndExpect()
                 return OfflineGroupImage(image.imageId).also { img ->
                     when (response) {
                         is ImgStore.GroupPicUp.Response.FileExists -> {

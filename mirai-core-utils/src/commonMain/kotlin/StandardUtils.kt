@@ -13,6 +13,7 @@
 package net.mamoe.mirai.utils
 
 import java.util.*
+import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
 import kotlin.reflect.KClass
 
@@ -232,4 +233,9 @@ public inline fun Throwable.findCauseOrSelf(maxDepth: Int = 20, filter: (Throwab
 
 public fun String.capitalize(): String {
     return replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.ROOT) else it.toString() }
+}
+
+public inline fun <T> T.context(block: T.() -> Unit) {
+    contract { callsInPlace(block, InvocationKind.EXACTLY_ONCE) }
+    return block()
 }
