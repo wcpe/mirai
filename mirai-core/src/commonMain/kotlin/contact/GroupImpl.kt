@@ -16,7 +16,10 @@ import kotlinx.coroutines.flow.*
 import net.mamoe.mirai.LowLevelApi
 import net.mamoe.mirai.Mirai
 import net.mamoe.mirai.contact.*
-import net.mamoe.mirai.data.*
+import net.mamoe.mirai.data.GroupInfo
+import net.mamoe.mirai.data.MemberInfo
+import net.mamoe.mirai.data.ReceiveAnnouncement
+import net.mamoe.mirai.data.covertToAnnouncement
 import net.mamoe.mirai.event.broadcast
 import net.mamoe.mirai.event.events.*
 import net.mamoe.mirai.internal.QQAndroidBot
@@ -72,24 +75,25 @@ internal class GroupImpl(
     override val settings: GroupSettingsImpl = GroupSettingsImpl(this, groupInfo)
     override var name: String by settings::name
 
-    override lateinit var owner: NormalMember
-    override lateinit var botAsMember: NormalMember
+    override lateinit var owner: NormalMemberImpl
+    override lateinit var botAsMember: NormalMemberImpl
 
     override val filesRoot: RemoteFile by lazy { RemoteFileImpl(this, "/") }
 
-    override val members: ContactList<NormalMember> = ContactList(members.mapNotNullTo(ConcurrentLinkedQueue()) {
-        if (it.uin == bot.id) {
-            botAsMember = newMember(it).cast()
-            if (it.permission == MemberPermission.OWNER) {
-                owner = botAsMember
+    override val members: ContactList<NormalMemberImpl> =
+        ContactList(members.mapNotNullTo(ConcurrentLinkedQueue()) { info ->
+            if (info.uin == bot.id) {
+                botAsMember = newNormalMember(info)
+                if (info.permission == MemberPermission.OWNER) {
+                    owner = botAsMember
+                }
+                null
+            } else newNormalMember(info).also { member ->
+                if (member.permission == MemberPermission.OWNER) {
+                    owner = member
+                }
             }
-            null
-        } else newMember(it).cast<NormalMember>().also { member ->
-            if (member.permission == MemberPermission.OWNER) {
-                owner = member
-            }
-        }
-    })
+        })
 
     val groupPkgMsgParsingCache = GroupPkgMsgParsingCache()
 
@@ -114,7 +118,7 @@ internal class GroupImpl(
         return true
     }
 
-    override operator fun get(id: Long): NormalMember? {
+    override operator fun get(id: Long): NormalMemberImpl? {
         if (id == bot.id) {
             return botAsMember
         }
@@ -274,6 +278,7 @@ internal class GroupImpl(
     override fun toString(): String = "Group($id)"
 }
 
+@Deprecated("use addNewNormalMember or newAnonymousMember")
 internal fun Group.newMember(memberInfo: MemberInfo): Member {
     this.checkIsGroupImpl()
     memberInfo.anonymousId?.let { anId ->
@@ -287,6 +292,32 @@ internal fun Group.newMember(memberInfo: MemberInfo): Member {
         this.coroutineContext,
         memberInfo
     )
+}
+
+internal fun Group.addNewNormalMember(memberInfo: MemberInfo): NormalMemberImpl {
+    return newNormalMember(memberInfo).also {
+        members.delegate.add(it)
+    }
+}
+
+internal fun Group.newNormalMember(memberInfo: MemberInfo): NormalMemberImpl {
+    this.checkIsGroupImpl()
+    return NormalMemberImpl(
+        this,
+        this.coroutineContext,
+        memberInfo
+    )
+}
+
+internal fun Group.newAnonymousMember(memberInfo: MemberInfo): AnonymousMemberImpl? {
+    this.checkIsGroupImpl()
+    memberInfo.anonymousId?.let { anId ->
+        return AnonymousMemberImpl(
+            this, this.coroutineContext,
+            memberInfo, anId
+        )
+    }
+    return null
 }
 
 internal fun GroupImpl.newAnonymous(name: String, id: String): AnonymousMemberImpl = newMember(
