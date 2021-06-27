@@ -64,11 +64,11 @@ internal fun Group.checkIsGroupImpl(): GroupImpl {
 @Suppress("PropertyName")
 internal class GroupImpl(
     bot: QQAndroidBot,
-    coroutineContext: CoroutineContext,
+    parentCoroutineContext: CoroutineContext,
     override val id: Long,
     groupInfo: GroupInfo,
-    members: Sequence<MemberInfo>
-) : Group, AbstractContact(bot, coroutineContext) {
+    members: Sequence<MemberInfo>,
+) : Group, AbstractContact(bot, parentCoroutineContext) {
     companion object
 
     val uin: Long = groupInfo.uin
