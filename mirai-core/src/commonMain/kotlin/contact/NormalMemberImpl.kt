@@ -11,8 +11,6 @@
 
 package net.mamoe.mirai.internal.contact
 
-import kotlinx.atomicfu.AtomicInt
-import kotlinx.atomicfu.atomic
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
@@ -35,12 +33,9 @@ import kotlin.coroutines.CoroutineContext
 @Suppress("MemberVisibilityCanBePrivate")
 internal class NormalMemberImpl constructor(
     group: GroupImpl,
-    coroutineContext: CoroutineContext,
-    memberInfo: MemberInfo
-) : NormalMember, AbstractMember(group, coroutineContext, memberInfo) {
-
-    @Suppress("unused") // false positive
-    val lastMessageSequence: AtomicInt = atomic(-1)
+    parentCoroutineContext: CoroutineContext,
+    memberInfo: MemberInfo,
+) : NormalMember, AbstractMember(group, parentCoroutineContext, memberInfo) {
 
     override val joinTimestamp: Int get() = info.joinTimestamp
     override val lastSpeakTimestamp: Int get() = info.lastSpeakTimestamp
@@ -56,7 +51,7 @@ internal class NormalMemberImpl constructor(
             ?: handler.sendMessageImpl<NormalMember>(
                 message = message,
                 preSendEventConstructor = ::GroupTempMessagePreSendEvent,
-                postSendEventConstructor = ::GroupTempMessagePostSendEvent.cast()
+                postSendEventConstructor = ::GroupTempMessagePostSendEvent.cast(),
             )
     }
 
@@ -98,7 +93,7 @@ internal class NormalMemberImpl constructor(
                         TroopManagement.EditGroupNametag(
                             bot.client,
                             this@NormalMemberImpl,
-                            newValue
+                            newValue,
                         ).sendWithoutExpect()
                     }
                     MemberCardChangeEvent(oldValue, newValue, this@NormalMemberImpl).broadcast()
@@ -118,7 +113,7 @@ internal class NormalMemberImpl constructor(
                         TroopManagement.EditSpecialTitle(
                             bot.client,
                             this@NormalMemberImpl,
-                            newValue
+                            newValue,
                         ).sendWithoutExpect()
                     }
                     MemberSpecialTitleChangeEvent(oldValue, newValue, this@NormalMemberImpl, null).broadcast()
@@ -139,7 +134,7 @@ internal class NormalMemberImpl constructor(
                 client = bot.client,
                 groupCode = group.id,
                 memberUin = this@NormalMemberImpl.id,
-                timeInSecond = durationSeconds
+                timeInSecond = durationSeconds,
             ).sendAndExpect<TroopManagement.Mute.Response>()
         }
 
@@ -155,7 +150,7 @@ internal class NormalMemberImpl constructor(
                 client = bot.client,
                 groupCode = group.id,
                 memberUin = this@NormalMemberImpl.id,
-                timeInSecond = 0
+                timeInSecond = 0,
             ).sendAndExpect<TroopManagement.Mute.Response>()
         }
 
@@ -173,7 +168,7 @@ internal class NormalMemberImpl constructor(
             val response: TroopManagement.Kick.Response = TroopManagement.Kick(
                 client = bot.client,
                 member = this@NormalMemberImpl,
-                message = message
+                message = message,
             ).sendAndExpect()
 
             check(response.success) { "kick failed: ${response.ret}" }
@@ -201,7 +196,7 @@ internal class NormalMemberImpl constructor(
             val resp: TroopManagement.ModifyAdmin.Response = TroopManagement.ModifyAdmin(
                 client = bot.client,
                 member = this@NormalMemberImpl,
-                operation = operation
+                operation = operation,
             ).sendAndExpect()
 
             check(resp.success) {
@@ -218,7 +213,7 @@ internal class NormalMemberImpl constructor(
 internal fun Member.checkBotPermissionHighest(operationName: String) {
     check(group.botPermission == MemberPermission.OWNER) {
         throw PermissionDeniedException(
-            "`$operationName` operation requires the OWNER permission, while bot has ${group.botPermission}"
+            "`$operationName` operation requires the OWNER permission, while bot has ${group.botPermission}",
         )
     }
 }
@@ -227,7 +222,7 @@ internal fun Member.checkBotPermissionHigherThanThis(operationName: String) {
     check(group.botPermission > this.permission) {
         throw PermissionDeniedException(
             "`$operationName` operation requires a higher permission, while " +
-                    "${group.botPermission} < ${this.permission}"
+                    "${group.botPermission} < ${this.permission}",
         )
     }
 }

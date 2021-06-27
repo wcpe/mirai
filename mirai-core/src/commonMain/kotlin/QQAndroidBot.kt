@@ -88,7 +88,7 @@ internal open class QQAndroidBot constructor(
                 override fun stateChanged0(
                     networkHandler: NetworkHandlerSupport,
                     previous: BaseStateImpl,
-                    new: BaseStateImpl
+                    new: BaseStateImpl,
                 ) {
                     eventDispatcher.broadcastAsync(BotOnlineEvent(bot)).thenBroadcast(eventDispatcher) {
                         if (!shouldBroadcastRelogin.compareAndSet(false, true)) {
@@ -217,12 +217,6 @@ internal open class QQAndroidBot constructor(
         get() = client.wLoginSigInfo.sKey.data
             .fold(5381) { acc: Int, b: Byte -> acc + acc.shl(5) + b.toInt() }
             .and(Int.MAX_VALUE)
-
-    ///////////////////////////////////////////////////////////////////////////
-    // contacts
-    ///////////////////////////////////////////////////////////////////////////
-
-    override lateinit var nick: String
 }
 
 internal fun QQAndroidBot.getGroupByUinOrFail(uin: Long) =

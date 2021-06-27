@@ -262,7 +262,7 @@ internal object MessageSvcPbSendMsg : OutgoingPacketFactory<MessageSvcPbSendMsg.
             sequenceIds = sequenceIds,
             randIds = randIds,
             sequenceIdsInitializer = { size ->
-                IntArray(size) { client.nextFriendSeq() }
+                IntArray(size) { client.sendFriendMessageSeq.next() }
             },
             postInit = {
                 sourceCallback(
@@ -276,7 +276,7 @@ internal object MessageSvcPbSendMsg : OutgoingPacketFactory<MessageSvcPbSendMsg.
                     )
                 )
             },
-            doFragmented = fragmented
+            doFragmented = fragmented,
         )
     }
     /*= buildOutgoingUniPacket(client) {

@@ -10,6 +10,7 @@
 package net.mamoe.mirai.internal.network.protocol.data.jce
 
 import kotlinx.serialization.Serializable
+import net.mamoe.mirai.internal.network.Packet
 import net.mamoe.mirai.internal.utils.io.JceStruct
 import net.mamoe.mirai.internal.utils.io.serialization.tars.TarsId
 
@@ -24,7 +25,6 @@ internal class RequestPushStatus(
     @JvmField @TarsId(5) val nPCVer: Long? = null,
     @JvmField @TarsId(6) val nClientType: Long? = null,
     @JvmField @TarsId(7) val nInstanceId: Long? = null,
-    @JvmField @TarsId(8) val vecInstanceList: List<InstanceInfo>? = null
-) : JceStruct
-
+    @JvmField @TarsId(8) val vecInstanceList: List<InstanceInfo>? = null,
+) : JceStruct, Packet
 

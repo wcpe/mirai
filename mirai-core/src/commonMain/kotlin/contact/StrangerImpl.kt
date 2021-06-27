@@ -17,10 +17,10 @@
 
 package net.mamoe.mirai.internal.contact
 
-import kotlinx.atomicfu.AtomicInt
-import kotlinx.atomicfu.atomic
 import net.mamoe.mirai.LowLevelApi
-import net.mamoe.mirai.contact.*
+import net.mamoe.mirai.contact.Stranger
+import net.mamoe.mirai.contact.User
+import net.mamoe.mirai.contact.asFriendOrNull
 import net.mamoe.mirai.data.StrangerInfo
 import net.mamoe.mirai.event.events.StrangerMessagePostSendEvent
 import net.mamoe.mirai.event.events.StrangerMessagePreSendEvent
@@ -36,10 +36,8 @@ import kotlin.coroutines.CoroutineContext
 
 
 @OptIn(ExperimentalContracts::class)
-internal inline fun Stranger.checkIsImpl(): StrangerImpl {
-    contract {
-        returns() implies (this@checkIsImpl is StrangerImpl)
-    }
+internal inline fun Stranger.impl(): StrangerImpl {
+    contract { returns() implies (this@impl is StrangerImpl) }
     check(this is StrangerImpl) { "A Stranger instance is not instance of StrangerImpl. Your instance: ${this::class.qualifiedName}" }
     return this
 }
@@ -47,10 +45,8 @@ internal inline fun Stranger.checkIsImpl(): StrangerImpl {
 internal class StrangerImpl(
     bot: QQAndroidBot,
     parentCoroutineContext: CoroutineContext,
-    internal val strangerInfo: StrangerInfo
-) : Stranger, AbstractUser(bot, parentCoroutineContext, strangerInfo) {
-    @Suppress("unused") // bug
-    val lastMessageSequence: AtomicInt = atomic(-1)
+    override val info: StrangerInfo,
+) : Stranger, AbstractUser(bot, parentCoroutineContext, info) {
     override suspend fun delete() {
         check(bot.strangers[this.id] != null) {
             "Stranger ${this.id} had already been deleted"
@@ -63,7 +59,7 @@ internal class StrangerImpl(
         }
     }
 
-    private val handler by lazy { StrangerSendMessageHandler(this) }
+    private val handler: StrangerSendMessageHandler by lazy { StrangerSendMessageHandler(this) }
 
     @Suppress("DuplicatedCode")
     override suspend fun sendMessage(message: Message): MessageReceipt<Stranger> {
