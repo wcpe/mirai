@@ -34,23 +34,23 @@ internal typealias KtProtoBuf = kotlinx.serialization.protobuf.ProtoBuf
 
 internal fun <T : JceStruct> ByteArray.loadWithUniPacket(
     deserializer: DeserializationStrategy<T>,
-    name: String? = null
+    name: String? = null,
 ): T = this.read { readUniPacket(deserializer, name) }
 
 internal fun <T : JceStruct> ByteArray.loadAs(
-    deserializer: DeserializationStrategy<T>
+    deserializer: DeserializationStrategy<T>,
 ): T = this.read { Tars.UTF_8.load(deserializer, this) }
 
 internal fun <T : JceStruct> BytePacketBuilder.writeJceStruct(
     serializer: SerializationStrategy<T>,
-    struct: T
+    struct: T,
 ) {
     Tars.UTF_8.dumpTo(serializer, struct, this)
 }
 
 internal fun <T : JceStruct> ByteReadPacket.readJceStruct(
     serializer: DeserializationStrategy<T>,
-    length: Int = this.remaining.toInt()
+    length: Int = this.remaining.toInt(),
 ): T {
     this.readPacketExact(length).use {
         return Tars.UTF_8.load(serializer, it)
@@ -63,7 +63,7 @@ internal fun <T : JceStruct> BytePacketBuilder.writeJceRequestPacket(
     funcName: String,
     name: String = funcName,
     serializer: SerializationStrategy<T>,
-    body: T
+    body: T,
 ) = writeJceStruct(
     RequestPacket.serializer(),
     RequestPacket(
@@ -71,8 +71,8 @@ internal fun <T : JceStruct> BytePacketBuilder.writeJceRequestPacket(
         version = version.toShort(),
         servantName = servantName,
         funcName = funcName,
-        sBuffer = jceRequestSBuffer(name, serializer, body)
-    )
+        sBuffer = jceRequestSBuffer(name, serializer, body),
+    ),
 )
 
 /**
@@ -80,7 +80,7 @@ internal fun <T : JceStruct> BytePacketBuilder.writeJceRequestPacket(
  */
 internal fun <T : JceStruct> ByteReadPacket.readUniPacket(
     deserializer: DeserializationStrategy<T>,
-    name: String? = null
+    name: String? = null,
 ): T {
     return decodeUniRequestPacketAndDeserialize(name) {
         it.read {
@@ -95,7 +95,7 @@ internal fun <T : JceStruct> ByteReadPacket.readUniPacket(
  */
 internal fun <T : ProtoBuf> ByteReadPacket.readUniPacket(
     deserializer: DeserializationStrategy<T>,
-    name: String? = null
+    name: String? = null,
 ): T {
     return decodeUniRequestPacketAndDeserialize(name) {
         it.read {
@@ -110,20 +110,22 @@ private fun <K, V> Map<K, V>.singleValue(): V = this.entries.single().value
 internal fun <R> ByteReadPacket.decodeUniRequestPacketAndDeserialize(name: String? = null, block: (ByteArray) -> R): R {
     val request = this.readJceStruct(RequestPacket.serializer())
 
-    return block(if (name == null) when (request.version?.toInt() ?: 3) {
-        2 -> request.sBuffer.loadAs(RequestDataVersion2.serializer()).map.singleValue().singleValue()
-        3 -> request.sBuffer.loadAs(RequestDataVersion3.serializer()).map.singleValue()
-        else -> error("unsupported version ${request.version}")
-    } else when (request.version?.toInt() ?: 3) {
-        2 -> request.sBuffer.loadAs(RequestDataVersion2.serializer()).map.getOrElse(name) { error("cannot find $name") }
-            .singleValue()
-        3 -> request.sBuffer.loadAs(RequestDataVersion3.serializer()).map.getOrElse(name) { error("cannot find $name") }
-        else -> error("unsupported version ${request.version}")
-    })
+    return block(
+        if (name == null) when (request.version?.toInt() ?: 3) {
+            2 -> request.sBuffer.loadAs(RequestDataVersion2.serializer()).map.singleValue().singleValue()
+            3 -> request.sBuffer.loadAs(RequestDataVersion3.serializer()).map.singleValue()
+            else -> error("unsupported version ${request.version}")
+        } else when (request.version?.toInt() ?: 3) {
+            2 -> request.sBuffer.loadAs(RequestDataVersion2.serializer()).map.getOrElse(name) { error("cannot find $name") }
+                .singleValue()
+            3 -> request.sBuffer.loadAs(RequestDataVersion3.serializer()).map.getOrElse(name) { error("cannot find $name") }
+            else -> error("unsupported version ${request.version}")
+        },
+    )
 }
 
 internal fun <T : JceStruct> T.toByteArray(
-    serializer: SerializationStrategy<T>
+    serializer: SerializationStrategy<T>,
 ): ByteArray = Tars.UTF_8.encodeToByteArray(serializer, this)
 
 internal fun <T : ProtoBuf> BytePacketBuilder.writeProtoBuf(serializer: SerializationStrategy<T>, v: T) {
@@ -143,8 +145,8 @@ internal fun <T : ProtoBuf> BytePacketBuilder.writeOidb(
             command = command,
             serviceType = serviceType,
             clientVersion = clientVersion,
-            bodybuffer = v.toByteArray(serializer)
-        )
+            bodybuffer = v.toByteArray(serializer),
+        ),
     )
 }
 
@@ -160,8 +162,8 @@ internal fun <T : ProtoBuf> T.toByteArray(serializer: SerializationStrategy<T>):
  */
 internal fun <T : ProtoBuf> ByteArray.loadAs(deserializer: DeserializationStrategy<T>, offset: Int = 0): T {
     if (offset != 0) {
-        require(this.size >= offset) { "size < offset" }
-        return this.copyOfRange(offset, this.lastIndex).loadAs(deserializer)
+        require(offset in offset..this.lastIndex) { "invalid offset: $offset" }
+        return this.copyOfRange(offset, this.size).loadAs(deserializer)
     }
     return KtProtoBuf.decodeFromByteArray(deserializer, this)
 }
@@ -179,16 +181,16 @@ internal fun <T : ProtoBuf> ByteArray.loadOidb(deserializer: DeserializationStra
  */
 internal fun <T : ProtoBuf> ByteReadPacket.readProtoBuf(
     serializer: DeserializationStrategy<T>,
-    length: Int = this.remaining.toInt()
+    length: Int = this.remaining.toInt(),
 ): T = KtProtoBuf.decodeFromByteArray(serializer, this.readBytes(length))
 
 @Suppress("NON_PUBLIC_PRIMARY_CONSTRUCTOR_OF_INLINE_CLASS")
 @JvmInline
 internal value class OidbBodyOrFailure<T : ProtoBuf> private constructor(
-    private val v: Any
+    private val v: Any,
 ) {
     internal class Failure(
-        val oidb: OidbSso.OIDBSSOPkg
+        val oidb: OidbSso.OIDBSSOPkg,
     )
 
     inline fun <R> fold(
@@ -219,7 +221,7 @@ internal value class OidbBodyOrFailure<T : ProtoBuf> private constructor(
  */
 internal inline fun <T : ProtoBuf> ByteReadPacket.readOidbSsoPkg(
     serializer: DeserializationStrategy<T>,
-    length: Int = this.remaining.toInt()
+    length: Int = this.remaining.toInt(),
 ): OidbBodyOrFailure<T> {
     val oidb = readBytes(length).loadAs(OidbSso.OIDBSSOPkg.serializer())
     return if (oidb.result == 0) {
@@ -235,12 +237,12 @@ internal inline fun <T : ProtoBuf> ByteReadPacket.readOidbSsoPkg(
 internal fun <T : JceStruct> jceRequestSBuffer(
     name: String,
     serializer: SerializationStrategy<T>,
-    jceStruct: T
+    jceStruct: T,
 ): ByteArray {
     return RequestDataVersion3(
         mapOf(
-            name to JCE_STRUCT_HEAD_OF_TAG_0 + jceStruct.toByteArray(serializer) + JCE_STRUCT_TAIL_OF_TAG_0
-        )
+            name to JCE_STRUCT_HEAD_OF_TAG_0 + jceStruct.toByteArray(serializer) + JCE_STRUCT_TAIL_OF_TAG_0,
+        ),
     ).toByteArray(RequestDataVersion3.serializer())
 }
 
@@ -253,7 +255,7 @@ internal class JceRequestSBufferBuilder {
     val map: MutableMap<String, ByteArray> = LinkedHashMap()
     operator fun <T : JceStruct> String.invoke(
         serializer: SerializationStrategy<T>,
-        jceStruct: T
+        jceStruct: T,
     ) {
         map[this] = JCE_STRUCT_HEAD_OF_TAG_0 + jceStruct.toByteArray(serializer) + JCE_STRUCT_TAIL_OF_TAG_0
     }
